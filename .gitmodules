@@ -1,0 +1,3 @@
+[submodule "graviton-core-evm"]
+	path = graviton-core-evm
+	url = git@github.com:GTON-capital/graviton-core-evm.git
