@@ -1,11 +1,10 @@
 import chai, { expect } from 'chai'
-import { Contract } from 'ethers'
+import { Contract, BigNumber, constants } from 'ethers'
 import { AddressZero, Zero, MaxUint256 } from 'ethers/constants'
-import { BigNumber, bigNumberify } from 'ethers/utils'
 import { solidity, MockProvider, createFixtureLoader } from 'ethereum-waffle'
 import { ecsign } from 'ethereumjs-util'
 
-import { expandTo18Decimals, getApprovalDigest, mineBlock, MINIMUM_LIQUIDITY } from './shared/utilities'
+import { expandTo18Decimals, getApprovalDigest, mineBlock, MINIMUM_LIQUIDITY, bigNumberify } from './shared/utilities'
 import { v2Fixture } from './shared/fixtures'
 
 chai.use(solidity)

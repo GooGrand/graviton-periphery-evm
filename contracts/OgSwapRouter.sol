@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity >=0.8.0;
 
 import "./interfaces/IERC20.sol";
 import "./interfaces/IUniswapV2Router02.sol";
@@ -136,8 +136,8 @@ contract OGSwap {
             (address token0,) = UniswapV2Library.sortTokens(input, output);
             uint amountOut = amounts[i + 1];
             (uint amount0Out, uint amount1Out) = input == token0 ? (uint(0), amountOut) : (amountOut, uint(0));
-            address to = i < path.length - 2 ? UniswapV2Library.pairFor(factory, output, path[i + 2]) : _to;
-            IUniswapV2Pair(UniswapV2Library.pairFor(factory, input, output)).swap(
+            address to = i < path.length - 2 ? UniswapV2Library.pairFor(address(factory), output, path[i + 2]) : _to;
+            IUniswapV2Pair(UniswapV2Library.pairFor(address(factory), input, output)).swap(
                 amount0Out, amount1Out, to, new bytes(0)
             );
         }
