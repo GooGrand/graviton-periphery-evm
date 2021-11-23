@@ -1,14 +1,14 @@
+import { waffle, ethers } from "hardhat"
 import chai, { expect } from 'chai'
 import { solidity, MockProvider, createFixtureLoader, deployContract } from 'ethereum-waffle'
-import { Contract } from 'ethers'
-import { BigNumber, bigNumberify } from 'ethers/utils'
-import { MaxUint256 } from 'ethers/constants'
+import { Contract, constants, BigNumber } from 'ethers'
+const { MaxUint256 } = constants
 import IUniswapV2Pair from '@uniswap/v2-core/build/IUniswapV2Pair.json'
 
 import { v2Fixture } from './shared/fixtures'
-import { expandTo18Decimals, getApprovalDigest, MINIMUM_LIQUIDITY } from './shared/utilities'
+import { expandTo18Decimals, getApprovalDigest, MINIMUM_LIQUIDITY, bigNumberify } from './shared/utilities'
 
-import DeflatingERC20 from '../build/DeflatingERC20.json'
+import {DeflatingERC20} from '../typechain/DeflatingERC20'
 import { ecsign } from 'ethereumjs-util'
 
 chai.use(solidity)
@@ -16,20 +16,14 @@ chai.use(solidity)
 const overrides = {
   gasLimit: 9999999
 }
-
 describe('UniswapV2Router02', () => {
-  const provider = new MockProvider({
-    hardfork: 'istanbul',
-    mnemonic: 'horn horn horn horn horn horn horn horn horn horn horn horn',
-    gasLimit: 9999999
-  })
-  const [wallet] = provider.getWallets()
-  const loadFixture = createFixtureLoader(provider, [wallet])
+  const [wallet] = waffle.provider.getWallets()
+  const loadFixture = createFixtureLoader([wallet], waffle.provider)
 
   let token0: Contract
   let token1: Contract
   let router: Contract
-  beforeEach(async function() {
+  beforeEach(async function () {
     const fixture = await loadFixture(v2Fixture)
     token0 = fixture.token0
     token1 = fixture.token1
@@ -122,25 +116,21 @@ describe('UniswapV2Router02', () => {
 })
 
 describe('fee-on-transfer tokens', () => {
-  const provider = new MockProvider({
-    hardfork: 'istanbul',
-    mnemonic: 'horn horn horn horn horn horn horn horn horn horn horn horn',
-    gasLimit: 9999999
-  })
-  const [wallet] = provider.getWallets()
-  const loadFixture = createFixtureLoader(provider, [wallet])
+  const [wallet] = waffle.provider.getWallets()
+  const provider = waffle.provider
+  const loadFixture = createFixtureLoader([wallet], provider)
 
   let DTT: Contract
   let WETH: Contract
   let router: Contract
   let pair: Contract
-  beforeEach(async function() {
+  beforeEach(async function () {
     const fixture = await loadFixture(v2Fixture)
 
     WETH = fixture.WETH
     router = fixture.router02
-
-    DTT = await deployContract(wallet, DeflatingERC20, [expandTo18Decimals(10000)])
+    const deflatingErcFactory = await ethers.getContractFactory("DeflatingERC20")
+    DTT = (await deflatingErcFactory.deploy(expandTo18Decimals(10000))) as DeflatingERC20
 
     // make a DTT<>WETH pair
     await fixture.factoryV2.createPair(DTT.address, WETH.address)
@@ -148,7 +138,7 @@ describe('fee-on-transfer tokens', () => {
     pair = new Contract(pairAddress, JSON.stringify(IUniswapV2Pair.abi), provider).connect(wallet)
   })
 
-  afterEach(async function() {
+  afterEach(async function () {
     expect(await provider.getBalance(router.address)).to.eq(0)
   })
 
@@ -309,31 +299,29 @@ describe('fee-on-transfer tokens', () => {
 })
 
 describe('fee-on-transfer tokens: reloaded', () => {
-  const provider = new MockProvider({
-    hardfork: 'istanbul',
-    mnemonic: 'horn horn horn horn horn horn horn horn horn horn horn horn',
-    gasLimit: 9999999
-  })
-  const [wallet] = provider.getWallets()
-  const loadFixture = createFixtureLoader(provider, [wallet])
+
+  const [wallet] = waffle.provider.getWallets()
+  const provider = waffle.provider
+  const loadFixture = createFixtureLoader([wallet], provider)
 
   let DTT: Contract
   let DTT2: Contract
   let router: Contract
-  beforeEach(async function() {
+  beforeEach(async function () {
     const fixture = await loadFixture(v2Fixture)
 
     router = fixture.router02
 
-    DTT = await deployContract(wallet, DeflatingERC20, [expandTo18Decimals(10000)])
-    DTT2 = await deployContract(wallet, DeflatingERC20, [expandTo18Decimals(10000)])
+    const deflatingErcFactory = await ethers.getContractFactory("DeflatingERC20")
+    DTT = (await deflatingErcFactory.deploy(expandTo18Decimals(10000))) as DeflatingERC20
+    DTT2 = (await deflatingErcFactory.deploy(expandTo18Decimals(10000))) as DeflatingERC20
 
     // make a DTT<>WETH pair
     await fixture.factoryV2.createPair(DTT.address, DTT2.address)
     const pairAddress = await fixture.factoryV2.getPair(DTT.address, DTT2.address)
   })
 
-  afterEach(async function() {
+  afterEach(async function () {
     expect(await provider.getBalance(router.address)).to.eq(0)
   })
 
