@@ -1,6 +1,7 @@
 import chai, { expect } from 'chai'
+import {waffle, ethers} from "hardhat"
 import { Contract, BigNumber, constants } from 'ethers'
-import { AddressZero, Zero, MaxUint256 } from 'ethers/constants'
+const { AddressZero, Zero, MaxUint256 }  = constants
 import { solidity, MockProvider, createFixtureLoader } from 'ethereum-waffle'
 import { ecsign } from 'ethereumjs-util'
 
@@ -20,13 +21,9 @@ enum RouterVersion {
 
 describe('UniswapV2Router{01,02}', () => {
   for (const routerVersion of Object.keys(RouterVersion)) {
-    const provider = new MockProvider({
-      hardfork: 'istanbul',
-      mnemonic: 'horn horn horn horn horn horn horn horn horn horn horn horn',
-      gasLimit: 9999999
-    })
-    const [wallet] = provider.getWallets()
-    const loadFixture = createFixtureLoader(provider, [wallet])
+    const provider = ethers.provider
+    const [wallet] = waffle.provider.getWallets()
+    const loadFixture = createFixtureLoader([wallet], waffle.provider)
 
     let token0: Contract
     let token1: Contract
@@ -58,6 +55,8 @@ describe('UniswapV2Router{01,02}', () => {
     })
 
     describe(routerVersion, () => {
+      console.log('test');
+      
       it('factory, WETH', async () => {
         expect(await router.factory()).to.eq(factory.address)
         expect(await router.WETH()).to.eq(WETH.address)
