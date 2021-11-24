@@ -2,9 +2,10 @@ import {ethers} from "hardhat"
 import { Wallet, Contract} from 'ethers'
 import { deployContract } from 'ethereum-waffle'
 
-import { expandTo18Decimals } from './utilities'
+import { expandTo18Decimals, getFactory } from './utilities'
 
 import {UniswapV2Factory} from '../../graviton-core-evm/typechain/UniswapV2Factory'
+import { UniswapV2Factory__factory as factoryMeta} from "../../graviton-core-evm/typechain/factories/UniswapV2Factory__factory"
 import {IUniswapV2Pair__factory as pairFactory} from '../../graviton-core-evm/typechain/factories/IUniswapV2Pair__factory'
 
 import {ERC20} from '../../typechain/ERC20'
@@ -48,7 +49,7 @@ export async function v2Fixture([wallet]: Wallet[], provider: any): Promise<V2Fi
   const WETH = (await wethFactory.deploy()) as WETH9
 
   // deploy V2
-  const factoryFactory = await ethers.getContractFactory("UniswapV2Factory")
+  const factoryFactory = await getFactory(factoryMeta)
   const factoryV2 = (await factoryFactory.deploy(
     wallet.address
   )) as UniswapV2Factory

@@ -1,8 +1,9 @@
-import { Contract, utils, BigNumber, providers } from 'ethers'
+import { ethers } from "hardhat"
+import { Contract, utils, BigNumber, providers, BytesLike, ContractFactory } from 'ethers'
 const { Web3Provider } = providers
 const { keccak256, defaultAbiCoder, toUtf8Bytes, solidityPack } = utils
 
-export const bigNumberify = (v: number): BigNumber => BigNumber.from(v)
+export const bigNumberify = (v: any): BigNumber => BigNumber.from(v)
 
 export const MINIMUM_LIQUIDITY = bigNumberify(10).pow(3)
 
@@ -60,20 +61,20 @@ export async function getApprovalDigest(
 }
 
 export async function mineBlock(provider: any, timestamp: number): Promise<void> {
-  await new Promise(async (resolve, reject) => {
-    ;(provider._web3Provider.sendAsync as any)(
-      { jsonrpc: '2.0', method: 'evm_mine', params: [timestamp] },
-      (error: any, result: any): void => {
-        if (error) {
-          reject(error)
-        } else {
-          resolve(result)
-        }
-      }
-    )
-  })
+  await provider.send('evm_mine', timestamp)
+  
 }
 
 export function encodePrice(reserve0: BigNumber, reserve1: BigNumber) {
   return [reserve1.mul(bigNumberify(2).pow(112)).div(reserve0), reserve0.mul(bigNumberify(2).pow(112)).div(reserve1)]
+}
+
+export async function getFactory({
+  abi,
+  bytecode,
+}: {
+  abi: any[]
+  bytecode: BytesLike
+}): Promise<ContractFactory> {
+  return await ethers.getContractFactory(abi, bytecode)
 }
