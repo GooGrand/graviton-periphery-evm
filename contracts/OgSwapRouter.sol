@@ -4,9 +4,10 @@ pragma solidity >=0.8.0;
 import "./interfaces/IERC20.sol";
 import "./interfaces/IUniswapV2Router02.sol";
 import "./interfaces/IWETH.sol";
+import "./interfaces/IOgSwapRouter.sol";
 import './libraries/UniswapV2Library.sol';
 
-contract OGSwap {
+contract OgSwapRouter is IOgSwapRouter {
     IWETH public eth;
     IERC20 public gtonToken;
     address public factory;
@@ -31,40 +32,6 @@ contract OGSwap {
         require(msg.sender == address(eth)); // only accept ETH via fallback from the WETH contract
     }
     
-    event Swap(
-        address indexed from, 
-        address to, 
-        address indexed tokenFrom, 
-        address indexed tokenTo,
-        uint amountIn, 
-        uint amountGton, 
-        uint amountOut
-    );
-    event CrossChainInput(
-        address indexed from, 
-        address indexed tokenFrom,
-        uint chainId, 
-        uint chainType, 
-        uint gton,
-        uint amount
-    );
-    event PayloadMeta(
-        uint indexed amount, 
-        uint indexed chainType, 
-        uint indexed chainId
-    );
-    event Payload(
-        bytes payload
-    );
-    event CrossChainOutput(
-        address indexed to, 
-        address indexed tokenTo, 
-        uint chainFromType, 
-        uint chainFromId, 
-        uint amountOut, 
-        uint gtonAmount
-    );
-
     constructor (
         address _factory,
         address _owner,
@@ -93,11 +60,11 @@ contract OGSwap {
         address _user,
         uint _amount
         
-    ) public {
+    ) public override {
         require(IERC20(_token).transfer(_user,_amount),"Err");
     }
     
-        function deserializeUint(
+    function deserializeUint(
         bytes memory b,
         uint256 startPos,
         uint256 len
@@ -117,19 +84,18 @@ contract OGSwap {
         return address(uint160(deserializeUint(b, startPos, 20)));
     }
     
-    function setFee(uint _fee) public onlyOwner {
+    function setFee(uint _fee) public override onlyOwner {
         fee = _fee;
     }
     
-    function setProvisor(address _provisor) public onlyOwner {
+    function setProvisor(address _provisor) public override onlyOwner {
         provisor = _provisor;
     }
     
-    function tokenWithdraw(uint _amount, address _token, address _user) public onlyOwner {
+    function tokenWithdraw(uint _amount, address _token, address _user) public override onlyOwner {
         require(IERC20(_token).transfer(_user,_amount),'INSUFFICIENT_CONTRACT_BALANCE');
     }
 
-    
     function _swap(uint[] memory amounts, address[] memory path, address _to) internal virtual {
         for (uint i; i < path.length - 1; i++) {
             (address input, address output) = (path[i], path[i + 1]);
@@ -149,11 +115,11 @@ contract OGSwap {
         uint _minimalAmountOut,
         address[] memory path,
         bytes memory customPayload
-    ) public payable {
+    ) public override payable returns (uint[] memory amounts) {
         require(path[0]==address(eth) && path[path.length-1]==address(gtonToken),'PATH_SHOULD_START_WITH_WETH');
-        uint[] memory amounts = UniswapV2Library.getAmountsOut(factory, msg.value, path);
-        eth.deposit{value: amounts[0]}();
+        amounts = UniswapV2Library.getAmountsOut(factory, msg.value, path);
         require(_minimalAmountOut <= amounts[amounts.length-1], 'INSUFFICIENT_OUTPUT_AMOUNT');
+        eth.deposit{value: amounts[0]}();
         require(eth.transfer(UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]));
         _swap(amounts, path, address(this));
         
@@ -170,9 +136,9 @@ contract OGSwap {
         uint _minimalAmountOut,
         address[] memory path,
         bytes memory customPayload
-    ) public returns (bytes memory payload) {
+    ) public payable override returns (uint[] memory amounts) {
         require(path[path.length-1]==address(gtonToken),'PATH_SHOULD_END_WITH_GTON');
-        uint[] memory amounts = UniswapV2Library.getAmountsOut(factory, _amountTokenIn, path);
+        amounts = UniswapV2Library.getAmountsOut(factory, _amountTokenIn, path);
         require(_minimalAmountOut <= amounts[amounts.length-1], 'INSUFFICIENT_OUTPUT_AMOUNT');
         require(IERC20(path[0]).transferFrom(
             msg.sender,
@@ -181,7 +147,7 @@ contract OGSwap {
         ),"INSUFFICIENT_ALLOWANCE_AMOUNT");
         _swap(amounts, path, address(this));
 
-        payload = abi.encodePacked(block.number,chainType,chainId,amounts[amounts.length-1],customPayload);
+        bytes memory payload = abi.encodePacked(block.number,chainType,chainId,amounts[amounts.length-1],customPayload);
         emit CrossChainInput(msg.sender, path[0], chainType, chainId, amounts[amounts.length-1], _amountTokenIn);
         emit PayloadMeta(amounts[amounts.length-1],chainType,chainId);
         emit Payload(payload);
@@ -192,7 +158,7 @@ contract OGSwap {
         uint chainId,
         uint _amountTokenIn,
         bytes memory customPayload
-    ) public {
+    ) public override {
         require(IERC20(gtonToken).transferFrom(msg.sender,address(this),_amountTokenIn),"");
         bytes memory payload = abi.encodePacked(block.number,chainType,chainId,_amountTokenIn,customPayload);
         
@@ -203,7 +169,7 @@ contract OGSwap {
     
     function recv (
         bytes calldata payload
-    ) external payable {
+    ) external override payable {
         require(msg.sender == address(provisor),"NOT_PROVISOR");
         require(!processedData[payload],"DATA_ALREADY_PROCESSED");
         processedData[payload] = true;
