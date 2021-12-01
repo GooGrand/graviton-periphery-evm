@@ -7,7 +7,7 @@ export const bigNumberify = (v: any): BigNumber => BigNumber.from(v)
 export const MINIMUM_LIQUIDITY = bigNumberify(10).pow(3)
 
 const PERMIT_TYPEHASH = keccak256(
-  toUtf8Bytes('Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)')
+  toUtf8Bytes('Permit(address owner, address spender, uint value, uint deadline, uint8 v, bytes32 r, bytes32 s)')
 )
 
 export function expandTo18Decimals(n: number): BigNumber {

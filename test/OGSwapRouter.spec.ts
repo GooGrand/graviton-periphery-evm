@@ -29,11 +29,15 @@ describe('OGSwapRouter', () => {
   let ERC20Pair: Contract
   let WETHPair: Contract
   let pair: Contract
-  let chainType = 0 
+  let chainType = 0
   let bscChainId = 56
   let ftmChainId = 250
   let receiveTokenAddress: number[]
-  let customPayload:number[]
+  let customPayload: number[]
+  let customPayloadToEth: number[]
+  let customPayloadToGton: number[]
+  let recvData: Array<{ address: string, bytes: number[] }> = []
+
   beforeEach(async function () {
     const fixture = await loadFixture(ogFixture)
     token0 = fixture.token0
@@ -49,6 +53,8 @@ describe('OGSwapRouter', () => {
 
     receiveTokenAddress = hexToBytes(token0.address.substring(2))
     customPayload = hexToBytes(alice.address.substring(2)).concat(receiveTokenAddress)
+    customPayloadToEth = hexToBytes(alice.address.substring(2)).concat(hexToBytes(WETH.address.substring(2)))
+    customPayloadToGton = hexToBytes(alice.address.substring(2))
   })
 
   describe("", () => {
@@ -66,6 +72,138 @@ describe('OGSwapRouter', () => {
       await gton.transfer(ERC20Pair.address, token1Amount)
       await ERC20Pair.mint(wallet.address, overrides)
     }
+    describe('recv', () => {
+        const token0Amount = expandTo18Decimals(5)
+        const token1Amount = expandTo18Decimals(10)
+        const swapAmount = expandTo18Decimals(1)
+        const expectedOutputAmount = bigNumberify('454545454545454545')
+
+        beforeEach(async () => {
+          await addLiquidity(token0Amount, token1Amount)
+          await gton.transfer(router.address, expandTo18Decimals(100))
+          await token0.approve(router.address, MaxUint256)
+
+          await gton.transfer(WETHPair.address, token1Amount)
+          await WETH.deposit({ value: token0Amount })
+          await WETH.transfer(WETHPair.address, token0Amount)
+          await WETHPair.mint(wallet.address, overrides)
+          
+        })
+
+        it('erc20', async () => {
+          const payload = utils.solidityPack(["uint", "uint", "uint", "uint", "bytes"],
+            [(await provider.getBlock('latest')).number + 1, chainType, bscChainId, swapAmount, customPayload])
+          await expect(router.recv(payload, overrides)).to.be.revertedWith("NOT_PROVISOR")
+          await expect(
+            router.connect(provisor).recv(
+              payload,
+              overrides
+            )
+          )
+            .to.emit(router, "CrossChainOutput")
+            .withArgs(
+              alice.address,
+              token0.address,
+              chainType,
+              bscChainId,
+              expectedOutputAmount,
+              swapAmount
+            )
+        })
+
+        it('erc20:gas', async () => {
+          const payload = utils.solidityPack(["uint", "uint", "uint", "uint", "bytes"],
+            [(await provider.getBlock('latest')).number + 1, chainType, bscChainId, expectedOutputAmount, customPayload])
+          // ensure that setting price{0,1}CumulativeLast for the first time doesn't affect our gas math
+          await mineBlock(provider, (await provider.getBlock('latest')).timestamp + 1)
+          await ERC20Pair.sync(overrides)
+
+          await token0.approve(router.address, MaxUint256)
+          await mineBlock(provider, (await provider.getBlock('latest')).timestamp + 1)
+          const tx = await router.connect(provisor).recv(
+            payload,
+            overrides
+          )
+          const receipt = await tx.wait()
+          expect(receipt.gasUsed).to.eq(287875)
+        }).retries(3)
+
+        it('eth', async () => {
+          const payload = utils.solidityPack(["uint", "uint", "uint", "uint", "bytes"],
+            [(await provider.getBlock('latest')).number + 1, chainType, bscChainId, swapAmount, customPayloadToEth])
+          await expect(router.recv(payload, overrides)).to.be.revertedWith("NOT_PROVISOR")
+          await expect(
+            router.connect(provisor).recv(
+              payload,
+              overrides
+            )
+          )
+            .to.emit(router, "CrossChainOutput")
+            .withArgs(
+              alice.address,
+              WETH.address,
+              chainType,
+              bscChainId,
+              expectedOutputAmount,
+              swapAmount
+            )
+        })
+
+        it('eth:gas', async () => {
+          const payload = utils.solidityPack(["uint", "uint", "uint", "uint", "bytes"],
+            [(await provider.getBlock('latest')).number + 1, chainType, bscChainId, expectedOutputAmount, customPayloadToEth])
+          // ensure that setting price{0,1}CumulativeLast for the first time doesn't affect our gas math
+          await mineBlock(provider, (await provider.getBlock('latest')).timestamp + 1)
+          await ERC20Pair.sync(overrides)
+
+          await token0.approve(router.address, MaxUint256)
+          await mineBlock(provider, (await provider.getBlock('latest')).timestamp + 1)
+          const tx = await router.connect(provisor).recv(
+            payload,
+            overrides
+          )
+          const receipt = await tx.wait()
+          expect(receipt.gasUsed).to.eq(315470)
+        }).retries(3)
+
+        it('gton', async () => {
+          const payload = utils.solidityPack(["uint", "uint", "uint", "uint", "bytes"],
+            [(await provider.getBlock('latest')).number + 1, chainType, bscChainId, swapAmount, customPayloadToGton])
+          await expect(router.recv(payload, overrides)).to.be.revertedWith("NOT_PROVISOR")
+          await expect(
+            router.connect(provisor).recv(
+              payload,
+              overrides
+            )
+          )
+            .to.emit(router, "CrossChainOutput")
+            .withArgs(
+              alice.address,
+              gton.address,
+              chainType,
+              bscChainId,
+              swapAmount,
+              swapAmount
+            )
+        })
+
+        it('gton:gas', async () => {
+          const payload = utils.solidityPack(["uint", "uint", "uint", "uint", "bytes"],
+            [(await provider.getBlock('latest')).number + 1, chainType, bscChainId, expectedOutputAmount, customPayloadToGton])
+          // ensure that setting price{0,1}CumulativeLast for the first time doesn't affect our gas math
+          await mineBlock(provider, (await provider.getBlock('latest')).timestamp + 1)
+          await ERC20Pair.sync(overrides)
+
+          await token0.approve(router.address, MaxUint256)
+          await mineBlock(provider, (await provider.getBlock('latest')).timestamp + 1)
+          const tx = await router.connect(provisor).recv(
+            payload,
+            overrides
+          )
+          const receipt = await tx.wait()
+          expect(receipt.gasUsed).to.eq(189762)
+        }).retries(3)
+    })
 
     describe('crossChain', () => {
       const token0Amount = expandTo18Decimals(5)
@@ -79,8 +217,8 @@ describe('OGSwapRouter', () => {
       })
 
       it('happy path', async () => {
-        const payload = utils.solidityPack(["uint","uint","uint","uint","bytes"], 
-        [(await provider.getBlock('latest')).number + 1,chainType,bscChainId,expectedOutputAmount,customPayload])
+        const payload = utils.solidityPack(["uint", "uint", "uint", "uint", "bytes"],
+          [(await provider.getBlock('latest')).number + 1, chainType, bscChainId, expectedOutputAmount, customPayload])
         await expect(
           router.crossChain(
             chainType,
@@ -102,18 +240,18 @@ describe('OGSwapRouter', () => {
           .withArgs(router.address, swapAmount, 0, 0, expectedOutputAmount, router.address)
           .to.emit(router, "CrossChainInput")
           .withArgs(
-            wallet.address, 
+            wallet.address,
             token0.address,
             chainType,
-            bscChainId, 
-            expectedOutputAmount, 
+            bscChainId,
+            expectedOutputAmount,
             swapAmount
           )
           .to.emit(router, "PayloadMeta")
           .withArgs(
-            expectedOutputAmount, 
+            expectedOutputAmount,
             chainType,
-            bscChainId, 
+            bscChainId,
           )
           .to.emit(router, "Payload")
           .withArgs(
@@ -169,8 +307,8 @@ describe('OGSwapRouter', () => {
       })
 
       it('happy path', async () => {
-        const payload = utils.solidityPack(["uint","uint","uint","uint","bytes"], 
-        [(await provider.getBlock('latest')).number + 1,chainType,bscChainId,gtonAmount,customPayload])
+        const payload = utils.solidityPack(["uint", "uint", "uint", "uint", "bytes"],
+          [(await provider.getBlock('latest')).number + 1, chainType, bscChainId, gtonAmount, customPayload])
         await expect(
           router.crossChainFromGton(
             chainType,
@@ -182,18 +320,18 @@ describe('OGSwapRouter', () => {
         )
           .to.emit(router, "CrossChainInput")
           .withArgs(
-            wallet.address, 
+            wallet.address,
             gton.address,
             chainType,
-            bscChainId, 
-            gtonAmount, 
+            bscChainId,
+            gtonAmount,
             gtonAmount
           )
           .to.emit(router, "PayloadMeta")
           .withArgs(
-            gtonAmount, 
+            gtonAmount,
             chainType,
-            bscChainId, 
+            bscChainId,
           )
           .to.emit(router, "Payload")
           .withArgs(
@@ -253,8 +391,8 @@ describe('OGSwapRouter', () => {
       })
 
       it('happy path', async () => {
-        const payload = utils.solidityPack(["uint","uint","uint","uint","bytes"], 
-          [(await provider.getBlock('latest')).number + 1,chainType,bscChainId,expectedOutputAmount,customPayload])
+        const payload = utils.solidityPack(["uint", "uint", "uint", "uint", "bytes"],
+          [(await provider.getBlock('latest')).number + 1, chainType, bscChainId, expectedOutputAmount, customPayload])
         const WETHPairToken0 = await WETHPair.token0()
         await expect(
           router.crossChainFromEth(chainType,
@@ -287,18 +425,18 @@ describe('OGSwapRouter', () => {
           )
           .to.emit(router, "CrossChainInput")
           .withArgs(
-            wallet.address, 
+            wallet.address,
             WETH.address,
             chainType,
-            bscChainId, 
-            expectedOutputAmount, 
+            bscChainId,
+            expectedOutputAmount,
             swapAmount
           )
           .to.emit(router, "PayloadMeta")
           .withArgs(
-            expectedOutputAmount, 
+            expectedOutputAmount,
             chainType,
-            bscChainId, 
+            bscChainId,
           )
           .to.emit(router, "Payload")
           .withArgs(
@@ -345,7 +483,7 @@ describe('OGSwapRouter', () => {
         await mineBlock(provider, (await provider.getBlock('latest')).timestamp + 1)
         const tx = await router.crossChainFromEth(
           chainType,
-          bscChainId, 
+          bscChainId,
           0,
           [WETH.address, gton.address],
           customPayload,
