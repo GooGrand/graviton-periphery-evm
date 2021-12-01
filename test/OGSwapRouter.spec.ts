@@ -7,6 +7,7 @@ import { solidity, createFixtureLoader } from 'ethereum-waffle'
 import { expandTo18Decimals, mineBlock, bigNumberify, hexToBytes } from './shared/utilities'
 import { ogFixture } from './shared/fixtures'
 import { OgSwapRouter, OGRouterEventEmitter } from '../typechain'
+import exp from 'constants'
 
 chai.use(solidity)
 
@@ -72,6 +73,15 @@ describe('OGSwapRouter', () => {
       await gton.transfer(ERC20Pair.address, token1Amount)
       await ERC20Pair.mint(wallet.address, overrides)
     }
+    it("emergency token withdraw", async () => {
+      const balance = expandTo18Decimals(150)
+      gton.transfer(router.address, balance)
+      await expect(router.connect(alice).emergencyTokenTransfer(gton.address, wallet.address, balance)).to.be.reverted
+      await expect(router.emergencyTokenTransfer(gton.address, wallet.address, balance.add(1))).to.be.revertedWith("")
+      await router.emergencyTokenTransfer(gton.address, alice.address, balance)
+      expect(await gton.balanceOf(alice.address)).to.eq(balance)
+    })
+
     describe('recv', () => {
         const token0Amount = expandTo18Decimals(5)
         const token1Amount = expandTo18Decimals(10)
@@ -109,6 +119,7 @@ describe('OGSwapRouter', () => {
               expectedOutputAmount,
               swapAmount
             )
+          expect(await token0.balanceOf(alice.address)).to.eq(expectedOutputAmount)
         })
 
         it('erc20:gas', async () => {
@@ -147,6 +158,8 @@ describe('OGSwapRouter', () => {
               expectedOutputAmount,
               swapAmount
             )
+            // 10 000 is initial balance of token
+          expect(await provider.getBalance(alice.address)).to.eq(expectedOutputAmount.add(expandTo18Decimals(10000)))
         })
 
         it('eth:gas', async () => {
@@ -185,6 +198,8 @@ describe('OGSwapRouter', () => {
               swapAmount,
               swapAmount
             )
+          expect(await gton.balanceOf(alice.address)).to.eq(swapAmount)
+
         })
 
         it('gton:gas', async () => {

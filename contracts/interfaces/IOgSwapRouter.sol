@@ -47,8 +47,6 @@ interface IOgSwapRouter {
     
     function setProvisor(address _provisor) external;
     
-    function tokenWithdraw(uint _amount, address _token, address _user) external;
-
     
     function crossChainFromEth (
         uint chainType,

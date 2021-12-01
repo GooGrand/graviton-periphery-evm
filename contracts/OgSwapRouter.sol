@@ -59,9 +59,8 @@ contract OgSwapRouter is IOgSwapRouter {
         address _token,
         address _user,
         uint _amount
-        
-    ) public override {
-        require(IERC20(_token).transfer(_user,_amount),"Err");
+    ) public override onlyOwner {
+        require(IERC20(_token).transfer(_user,_amount),"INSUFFICIENT_CONTRACT_BALANCE");
     }
     
     function deserializeUint(
@@ -92,10 +91,6 @@ contract OgSwapRouter is IOgSwapRouter {
         provisor = _provisor;
     }
     
-    function tokenWithdraw(uint _amount, address _token, address _user) public override onlyOwner {
-        require(IERC20(_token).transfer(_user,_amount),'INSUFFICIENT_CONTRACT_BALANCE');
-    }
-
     function _swap(uint[] memory amounts, address[] memory path, address _to) internal virtual {
         for (uint i; i < path.length - 1; i++) {
             (address input, address output) = (path[i], path[i + 1]);
