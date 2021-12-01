@@ -1,6 +1,5 @@
 import { ethers } from "hardhat"
-import { Contract, utils, BigNumber, providers, BytesLike, ContractFactory } from 'ethers'
-const { Web3Provider } = providers
+import { Contract, utils, BigNumber, BytesLike, ContractFactory } from 'ethers'
 const { keccak256, defaultAbiCoder, toUtf8Bytes, solidityPack } = utils
 
 export const bigNumberify = (v: any): BigNumber => BigNumber.from(v)
@@ -8,7 +7,7 @@ export const bigNumberify = (v: any): BigNumber => BigNumber.from(v)
 export const MINIMUM_LIQUIDITY = bigNumberify(10).pow(3)
 
 const PERMIT_TYPEHASH = keccak256(
-  toUtf8Bytes('Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)')
+  toUtf8Bytes('Permit(address owner, address spender, uint value, uint deadline, uint8 v, bytes32 r, bytes32 s)')
 )
 
 export function expandTo18Decimals(n: number): BigNumber {
@@ -61,8 +60,7 @@ export async function getApprovalDigest(
 }
 
 export async function mineBlock(provider: any, timestamp: number): Promise<void> {
-  await provider.send('evm_mine', timestamp)
-  
+  await provider.send('evm_mine', [timestamp])
 }
 
 export function encodePrice(reserve0: BigNumber, reserve1: BigNumber) {
@@ -77,4 +75,9 @@ export async function getFactory({
   bytecode: BytesLike
 }): Promise<ContractFactory> {
   return await ethers.getContractFactory(abi, bytecode)
+}
+export function hexToBytes(hex: string) {
+  for (var bytes = [], c = 0; c < hex.length; c += 2)
+    bytes.push(parseInt(hex.substr(c, 2), 16))
+  return bytes
 }

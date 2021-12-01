@@ -1,6 +1,6 @@
 import { waffle, ethers } from "hardhat"
 import chai, { expect } from 'chai'
-import { solidity, MockProvider, createFixtureLoader, deployContract } from 'ethereum-waffle'
+import { solidity, createFixtureLoader } from 'ethereum-waffle'
 import { Contract, constants, BigNumber } from 'ethers'
 const { MaxUint256 } = constants
 import IUniswapV2Pair from '@uniswap/v2-core/build/IUniswapV2Pair.json'
@@ -17,24 +17,18 @@ const overrides = {
   gasLimit: 9999999
 }
 describe('UniswapV2Router02', () => {
-  console.log('start');
   
   const [wallet] = waffle.provider.getWallets()
   const loadFixture = createFixtureLoader([wallet], waffle.provider)
-  console.log('loaded fixtures');
   
   let token0: Contract
   let token1: Contract
   let router: Contract
   beforeEach(async function () {
-  console.log('loaded fixtures1');
-
     const fixture = await loadFixture(v2Fixture)
     token0 = fixture.token0
     token1 = fixture.token1
     router = fixture.router02
-  console.log('loaded fixtures2');
-
   })
 
   it('quote', async () => {
