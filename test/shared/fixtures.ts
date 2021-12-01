@@ -1,19 +1,18 @@
-import {ethers} from "hardhat"
-import { Wallet, Contract} from 'ethers'
-import { deployContract } from 'ethereum-waffle'
+import { ethers } from "hardhat"
+import { Wallet, Contract } from 'ethers'
 
 import { expandTo18Decimals, getFactory } from './utilities'
 
-import {UniswapV2Factory} from '../../graviton-core-evm/typechain/UniswapV2Factory'
-import { UniswapV2Factory__factory as factoryMeta} from "../../graviton-core-evm/typechain/factories/UniswapV2Factory__factory"
-import {IUniswapV2Pair__factory as pairFactory} from '../../graviton-core-evm/typechain/factories/IUniswapV2Pair__factory'
+import { UniswapV2Factory } from '../../graviton-core-evm/typechain/UniswapV2Factory'
+import { UniswapV2Factory__factory as factoryMeta } from "../../graviton-core-evm/typechain/factories/UniswapV2Factory__factory"
+import { IUniswapV2Pair__factory as pairFactory } from '../../graviton-core-evm/typechain/factories/IUniswapV2Pair__factory'
 
-import {ERC20} from '../../typechain/ERC20'
-import {WETH9} from '../../typechain/WETH9'
-import {UniswapV2Router01} from '../../typechain/UniswapV2Router01'
-import {UniswapV2Migrator} from '../../typechain/UniswapV2Migrator'
-import {UniswapV2Router02} from '../../typechain/UniswapV2Router02'
-import {RouterEventEmitter} from '../../typechain/RouterEventEmitter'
+import { ERC20 } from '../../typechain/ERC20'
+import { WETH9 } from '../../typechain/WETH9'
+import { UniswapV2Router01 } from '../../typechain/UniswapV2Router01'
+import { UniswapV2Router02 } from '../../typechain/UniswapV2Router02'
+import { RouterEventEmitter } from '../../typechain/RouterEventEmitter'
+import { OGRouterEventEmitter, OgSwapRouter } from "../../typechain"
 
 const overrides = {
   gasLimit: 9999999
@@ -32,6 +31,7 @@ interface V2Fixture {
   // migrator: Contract
   pair: Contract
   WETHPair: Contract
+  ERC20Pair: Contract
 }
 
 export async function v2Fixture([wallet]: Wallet[], provider: any): Promise<V2Fixture> {
@@ -87,6 +87,10 @@ export async function v2Fixture([wallet]: Wallet[], provider: any): Promise<V2Fi
   const WETHPairAddress = await factoryV2.getPair(WETH.address, WETHPartner.address)
   const WETHPair = new Contract(WETHPairAddress, JSON.stringify(pairFactory.abi), provider).connect(wallet)
 
+  await factoryV2.createPair(token0.address, WETHPartner.address)
+  const erc20Pair = await factoryV2.getPair(token0.address, WETHPartner.address)
+  const ERC20Pair = new Contract(erc20Pair, JSON.stringify(pairFactory.abi), provider).connect(wallet)
+
   return {
     token0,
     token1,
@@ -99,6 +103,30 @@ export async function v2Fixture([wallet]: Wallet[], provider: any): Promise<V2Fi
     routerEventEmitter,
     // migrator,
     pair,
-    WETHPair
+    WETHPair,
+    ERC20Pair
+  }
+}
+
+interface OgFixture {
+  token0: Contract
+  token1: Contract
+  WETH: Contract
+  gton: Contract
+  factoryV2: Contract
+  router: OgSwapRouter
+  pair: Contract
+  WETHPair: Contract
+  ERC20Pair: Contract
+  routerEventEmitter: Contract
+}
+export async function ogFixture([wallet, provisor]: Wallet[], provider: any): Promise<OgFixture> {
+  const { token0, token1, WETH, WETHPartner, factoryV2, pair, WETHPair, ERC20Pair } = await v2Fixture([wallet], provider)
+  const swapFactory = await ethers.getContractFactory("OgSwapRouter")
+  const router = await swapFactory.deploy(factoryV2.address, wallet.address, provisor.address, WETHPartner.address, WETH.address)
+  const eventEmitterFactory = await ethers.getContractFactory("OGRouterEventEmitter")
+  const routerEventEmitter = await eventEmitterFactory.deploy()
+  return {
+    token0, token1, WETH, gton: WETHPartner, factoryV2, pair, WETHPair, router, routerEventEmitter, ERC20Pair
   }
 }
