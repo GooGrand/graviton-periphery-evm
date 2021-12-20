@@ -511,5 +511,35 @@ describe('OGSwapRouter', () => {
         expect(receipt.gasUsed).to.eq(153171)
       }).retries(3)
     })
+
+    describe('setOwner', () => {
+      it('only owner', async () => {
+        await expect(router.connect(bob).setOwner(bob.address)).to.be.revertedWith('NOT_PERMITED')
+      })
+      it('change owner', async () => {
+        await router.setOwner(bob.address)
+        expect(await router.owner()).to.eq(bob.address);
+      })
+    })
+
+    describe('setFee', () => {
+      it('only owner', async () => {
+        await expect(router.connect(bob).setFee(123456789)).to.be.revertedWith('NOT_PERMITED')
+      })
+      it('change fee', async () => {
+        await router.setFee(123456789)
+        expect(await router.fee()).to.eq(123456789);
+      })
+    })
+      
+    describe('set provisor', () => {
+      it('only owner', async () => {
+        await expect(router.connect(bob).setProvisor(bob.address)).to.be.revertedWith('NOT_PERMITED')
+      })
+      it('change provisor', async () => {
+        await router.setProvisor(bob.address)
+        expect(await router.provisor()).to.eq(bob.address);
+      })
+    })
   })
 })
