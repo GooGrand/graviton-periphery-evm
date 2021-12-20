@@ -511,6 +511,7 @@ describe('OGSwapRouter', () => {
         expect(receipt.gasUsed).to.eq(153171)
       }).retries(3)
     })
+
     describe('setOwner', () => {
       it('only owner', async () => {
         await expect(router.connect(bob).setOwner(bob.address)).to.be.revertedWith('NOT_PERMITED')
