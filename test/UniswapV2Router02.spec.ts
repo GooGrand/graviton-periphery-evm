@@ -196,7 +196,6 @@ describe('fee-on-transfer tokens', () => {
       nonce,
       MaxUint256
     )
-    console.log(digest);
     
     const { v, r, s } = ecsign(Buffer.from(digest.slice(2), 'hex'), Buffer.from(wallet.privateKey.slice(2), 'hex'))
 
@@ -208,7 +207,6 @@ describe('fee-on-transfer tokens', () => {
 
     await pair.approve(router.address, MaxUint256)
     const balanceBefore = await provider.getBalance(wallet.address)
-    console.log(balanceBefore.toString());
     await router.removeLiquidityETHWithPermitSupportingFeeOnTransferTokens(
       DTT.address,
       liquidity,
@@ -222,8 +220,6 @@ describe('fee-on-transfer tokens', () => {
       s,
       overrides
     )
-    console.log((await provider.getBalance(wallet.address)).toString());
-    console.log((await provider.getBalance(wallet.address)).sub(balanceBefore).toString())
   })
 
   describe('swapExactTokensForTokensSupportingFeeOnTransferTokens', () => {
