@@ -243,7 +243,7 @@ describe('UniswapV2Router{01,02}', () => {
           nonce,
           MaxUint256
         )
-
+        
         const { v, r, s } = ecsign(Buffer.from(digest.slice(2), 'hex'), Buffer.from(wallet.privateKey.slice(2), 'hex'))
 
         await router.removeLiquidityWithPermit(

@@ -6,7 +6,7 @@ import { solidity, createFixtureLoader } from 'ethereum-waffle'
 
 import { expandTo18Decimals, mineBlock, bigNumberify, hexToBytes } from './shared/utilities'
 import { ogFixture } from './shared/fixtures'
-import { OgSwapRouter, OGRouterEventEmitter } from '../typechain'
+import { OgSwapRouter } from '../typechain/OgSwapRouter'
 import exp from 'constants'
 
 chai.use(solidity)

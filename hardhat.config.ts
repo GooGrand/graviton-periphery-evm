@@ -42,6 +42,7 @@ export default {
   },
   networks: {
     hardhat: {
+      chainId: 31337,
     },
     mainnet: {
       url: "https://mainnet.infura.io/v3/" + (process.env.INFURA ?? ""),
